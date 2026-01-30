@@ -8,6 +8,7 @@ import Rectangle from './Rectangle';
 import Redo from './Redo';
 import Save from './Save';
 import Text from './Text';
+import Translate from './Translate';
 import Undo from './Undo';
 
 export default [
@@ -21,6 +22,7 @@ export default [
   Undo,
   Redo,
   '|',
+  Translate,
   Save,
   Cancel,
   Ok,

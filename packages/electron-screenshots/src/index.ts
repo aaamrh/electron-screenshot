@@ -33,6 +33,7 @@ export interface Lang {
   operation_arrow_title?: string;
   operation_ellipse_title?: string;
   operation_rectangle_title?: string;
+  operation_translate_title?: string;
 }
 
 export interface ScreenshotsOpts {
@@ -85,8 +86,10 @@ export default class Screenshots extends Events {
    */
   public async startCapture(): Promise<void> {
     this.logger('startCapture');
-
+    
     const display = getDisplay();
+
+    this.logger('display', display);
 
     const [imageUrl] = await Promise.all([this.capture(display), this.isReady]);
 

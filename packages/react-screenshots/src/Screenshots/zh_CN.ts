@@ -11,6 +11,7 @@ export interface Lang {
   operation_arrow_title: string;
   operation_ellipse_title: string;
   operation_rectangle_title: string;
+  operation_translate_title: string;
 }
 
 const zhCN: Lang = {
@@ -26,6 +27,7 @@ const zhCN: Lang = {
   operation_arrow_title: '箭头',
   operation_ellipse_title: '椭圆',
   operation_rectangle_title: '矩形',
+  operation_translate_title: '翻译',
 };
 
 export default zhCN;
