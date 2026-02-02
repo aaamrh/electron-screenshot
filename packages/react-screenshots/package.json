@@ -1,6 +1,6 @@
 {
   "name": "@lihuo/react-screenshots",
-  "version": "0.6.5",
+  "version": "0.6.6",
   "description": "a screenshot cropper tool by react",
   "type": "module",
   "exports": {
