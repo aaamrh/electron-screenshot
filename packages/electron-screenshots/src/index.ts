@@ -105,9 +105,12 @@ export default class Screenshots extends Events {
     this.getLanguagesFn = opts?.getLanguages;
     this.translateFn = opts?.translate;
     this.listenIpc();
+    
+    // 预加载 BrowserView，减少首次启动延迟
     this.$view.webContents.loadURL(
       `file://${require.resolve("@lihuo/react-screenshots/dist/electron.html")}`,
     );
+    
     if (opts?.lang) {
       this.setLang(opts.lang);
     }
@@ -183,10 +186,10 @@ export default class Screenshots extends Events {
     // 重置截图区域
     this.$view.webContents.send("SCREENSHOTS:reset");
 
-    // 保证 UI 有足够的时间渲染
+    // 保证 UI 有足够的时间渲染（降低延迟从 500ms 到 50ms）
     await Promise.race([
       new Promise<void>((resolve) => {
-        setTimeout(() => resolve(), 500);
+        setTimeout(() => resolve(), 50);
       }),
       new Promise<void>((resolve) => {
         ipcMain.once("SCREENSHOTS:reset", () => resolve());
