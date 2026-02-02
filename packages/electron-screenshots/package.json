@@ -1,6 +1,6 @@
 {
   "name": "@lihuo/electron-screenshots",
-  "version": "0.6.6",
+  "version": "0.6.7",
   "description": "electron 截图插件（支持翻译）",
   "types": "lib/index.d.ts",
   "main": "lib/index.cjs.js",
@@ -39,7 +39,7 @@
     "debug": "^4.4.3",
     "fs-extra": "^11.3.3",
     "node-screenshots": "^0.2.5",
-    "@lihuo/react-screenshots": "^0.6.3",
+    "@lihuo/react-screenshots": "^0.6.6",
     "tesseract.js": "^5.1.1"
   },
   "peerDependencies": {
