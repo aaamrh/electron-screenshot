@@ -1,6 +1,6 @@
 {
   "name": "@lihuo/electron-screenshots",
-  "version": "0.6.3",
+  "version": "0.6.4",
   "description": "electron 截图插件（支持翻译）",
   "types": "lib/index.d.ts",
   "main": "lib/index.cjs.js",
