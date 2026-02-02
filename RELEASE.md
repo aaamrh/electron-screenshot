@@ -2,9 +2,39 @@
 
 ## 📦 发包流程
 
+### ⚠️ 重要：版本同步策略
+
+**两个包必须保持相同的版本号！**
+
+- `@lihuo/react-screenshots` 
+- `@lihuo/electron-screenshots`
+
+即使某个包没有代码变更，也需要同步版本号，避免依赖版本不一致导致的问题。
+
 ### 1. 修改代码后构建并发布
 
-#### react-screenshots 包
+#### 一键发布（推荐）
+```bash
+# 设置新版本号
+VERSION=0.6.9  # 修改为你要发布的版本
+
+# 发布 react-screenshots
+cd d:\work\screenshots\packages\react-screenshots
+npm version $VERSION
+pnpm build
+npm publish --registry=https://npm.allyjp.site/
+
+# 更新 electron-screenshots 依赖并发布
+cd d:\work\screenshots\packages\electron-screenshots
+# 手动修改 package.json 中 @lihuo/react-screenshots 的版本到 ^$VERSION
+npm version $VERSION
+pnpm build
+npm publish --registry=https://npm.allyjp.site/
+```
+
+#### 分步发布
+
+##### react-screenshots 包
 ```bash
 cd d:\work\screenshots\packages\react-screenshots
 npm version patch  # 或 minor/major
@@ -85,8 +115,8 @@ source: {
 ```
 
 ### 2. 版本号说明
-- **patch**: 修复 bug (0.6.5 → 0.6.6)
-- **minor**: 新增功能 (0.6.6 → 0.7.0)
+- **patch**: 修复 bug (0.6.8 → 0.6.9)
+- **minor**: 新增功能 (0.6.9 → 0.7.0)
 - **major**: 破坏性变更 (0.7.0 → 1.0.0)
 
 ### 3. 发布前检查
