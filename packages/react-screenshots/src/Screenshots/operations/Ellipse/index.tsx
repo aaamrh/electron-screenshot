@@ -71,11 +71,13 @@ export default function Ellipse(): ReactElement {
 
   const onSelectEllipse = useCallback(() => {
     if (checked) {
-      return;
+      operationDispatcher.reset();
+      cursorDispatcher.set('default');
+    } else {
+      selectEllipse();
     }
-    selectEllipse();
     historyDispatcher.clearSelect();
-  }, [checked, selectEllipse, historyDispatcher]);
+  }, [checked, selectEllipse, operationDispatcher, cursorDispatcher, historyDispatcher]);
 
   const onDrawSelect = useCallback(
     (action: HistoryItemSource<unknown, unknown>, e: PointerEvent) => {

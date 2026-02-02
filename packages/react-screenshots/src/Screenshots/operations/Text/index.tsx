@@ -135,11 +135,13 @@ export default function Text(): ReactElement {
 
   const onSelectText = useCallback(() => {
     if (checked) {
-      return;
+      operationDispatcher.reset();
+      cursorDispatcher.set('default');
+    } else {
+      selectText();
     }
-    selectText();
     historyDispatcher.clearSelect();
-  }, [checked, selectText, historyDispatcher]);
+  }, [checked, selectText, operationDispatcher, cursorDispatcher, historyDispatcher]);
 
   const onSizeChange = useCallback((size: number) => {
     if (textRef.current) {

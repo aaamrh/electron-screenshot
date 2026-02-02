@@ -71,11 +71,13 @@ export default function Rectangle(): ReactElement {
 
   const onSelectRectangle = useCallback(() => {
     if (checked) {
-      return;
+      operationDispatcher.reset();
+      cursorDispatcher.set('default');
+    } else {
+      selectRectangle();
     }
-    selectRectangle();
     historyDispatcher.clearSelect();
-  }, [checked, selectRectangle, historyDispatcher]);
+  }, [checked, selectRectangle, operationDispatcher, cursorDispatcher, historyDispatcher]);
 
   const onDrawSelect = useCallback(
     (action: HistoryItemSource<unknown, unknown>, e: PointerEvent) => {

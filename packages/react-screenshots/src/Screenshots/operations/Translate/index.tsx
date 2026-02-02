@@ -117,7 +117,7 @@ export default function Translate(): ReactElement {
 
       setDropdownPosition({ top, left, placement });
     }
-  }, [showDropdown]);
+  }, [showDropdown, bounds]);
 
   // 从截图区域提取图片
   const extractImageFromBounds = useCallback(async (): Promise<
@@ -197,6 +197,9 @@ export default function Translate(): ReactElement {
     }
 
     setIsLoading(true);
+
+    // 使用 setTimeout 让 loading 状态先更新到 UI，避免卡顿
+    await new Promise(resolve => setTimeout(resolve, 50));
 
     try {
       // 1. 提取截图区域的图片
@@ -752,9 +755,9 @@ export default function Translate(): ReactElement {
             {!isLoading && (
               <svg
                 viewBox="0 0 1024 1024"
-                width="16"
-                height="16"
-                style={{ display: 'block' }}
+                width="26"
+                height="26"
+                style={{ display: "block" }}
               >
                 <path
                   d="M550.761412 343.762824l1.716706 3.312941 122.970353 281.118117a26.352941 26.352941 0 0 1-46.772706 24.064l-1.505883-2.951529-31.533176-72.071529h-134.625882l-31.503059 72.071529a26.352941 26.352941 0 0 1-49.423059-18.010353l1.114353-3.102118 123.00047-281.118117a26.383059 26.383059 0 0 1 46.561883-3.312941z m-22.40753 79.600941l-44.272941 101.165176h88.515765l-44.272941-101.165176z"

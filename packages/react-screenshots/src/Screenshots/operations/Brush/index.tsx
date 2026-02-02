@@ -53,11 +53,13 @@ export default function Brush(): ReactElement {
 
   const onSelectBrush = useCallback(() => {
     if (checked) {
-      return;
+      operationDispatcher.reset();
+      cursorDispatcher.set('default');
+    } else {
+      selectBrush();
     }
-    selectBrush();
     historyDispatcher.clearSelect();
-  }, [checked, selectBrush, historyDispatcher]);
+  }, [checked, selectBrush, operationDispatcher, cursorDispatcher, historyDispatcher]);
 
   const onDrawSelect = useCallback(
     (action: HistoryItemSource<unknown, unknown>, e: PointerEvent) => {
