@@ -1,7 +1,7 @@
 {
-  "name": "electron-screenshots",
-  "version": "0.6.0",
-  "description": "electron 截图插件",
+  "name": "@lihuo/electron-screenshots",
+  "version": "0.6.3",
+  "description": "electron 截图插件（支持翻译）",
   "types": "lib/index.d.ts",
   "main": "lib/index.cjs.js",
   "module": "lib/index.js",
@@ -33,13 +33,14 @@
   },
   "homepage": "https://github.com/nashaofu/screenshots/tree/master/packages/electron-screenshots#readme",
   "publishConfig": {
-    "registry": "https://registry.npmjs.org/"
+    "registry": "https://npm.allyjp.site/"
   },
   "dependencies": {
     "debug": "^4.4.3",
     "fs-extra": "^11.3.3",
     "node-screenshots": "^0.2.5",
-    "react-screenshots": "workspace:*"
+    "@lihuo/react-screenshots": "^0.6.3",
+    "tesseract.js": "^5.1.1"
   },
   "peerDependencies": {
     "electron": ">=20"

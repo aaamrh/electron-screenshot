@@ -1,5 +1,5 @@
-import Events from 'node:events';
-import debug, { type Debugger } from 'debug';
+import Events from "node:events";
+import debug, { type Debugger } from "debug";
 import {
   BrowserView,
   BrowserWindow,
@@ -10,12 +10,27 @@ import {
   ipcMain,
   nativeImage,
   screen,
-} from 'electron';
-import fs from 'fs-extra';
-import Event from './event.js';
-import getDisplay, { type Display } from './getDisplay.js';
-import padStart from './padStart.js';
-import type { Bounds, ScreenshotsData } from './preload.js';
+} from "electron";
+import fs from "fs-extra";
+import Event from "./event.js";
+import getDisplay, { type Display } from "./getDisplay.js";
+import padStart from "./padStart.js";
+import type { Bounds, ScreenshotsData } from "./preload.js";
+import { OCRService } from "./ocr-service.js";
+import type {
+  LanguageItem,
+  TranslateRequest,
+  TranslateResponse,
+  GetLanguagesResponse,
+} from "./types.js";
+
+// 导出类型供外部使用
+export type {
+  LanguageItem,
+  TranslateRequest,
+  TranslateResponse,
+  GetLanguagesResponse,
+} from "./types.js";
 
 export type LoggerFn = (...args: unknown[]) => void;
 export type Logger = Debugger | LoggerFn;
@@ -40,6 +55,11 @@ export interface ScreenshotsOpts {
   lang?: Lang;
   logger?: Logger;
   singleWindow?: boolean;
+  enableOCR?: boolean;
+  /** 获取语言列表的回调函数 */
+  getLanguages?: () => Promise<LanguageItem[]>;
+  /** 翻译文本的回调函数 */
+  translate?: (request: TranslateRequest) => Promise<string>;
 }
 
 export type { Bounds };
@@ -50,7 +70,7 @@ export default class Screenshots extends Events {
 
   public $view: BrowserView = new BrowserView({
     webPreferences: {
-      preload: require.resolve('./preload.js'),
+      preload: require.resolve("./preload.js"),
       nodeIntegration: false,
       contextIsolation: true,
     },
@@ -60,9 +80,19 @@ export default class Screenshots extends Events {
 
   private singleWindow: boolean;
 
+  private ocrService: OCRService | null = null;
+
+  /** 获取语言列表的回调函数 */
+  private getLanguagesFn: (() => Promise<LanguageItem[]>) | undefined;
+
+  /** 翻译文本的回调函数 */
+  private translateFn:
+    | ((request: TranslateRequest) => Promise<string>)
+    | undefined;
+
   private isReady = new Promise<void>((resolve) => {
-    ipcMain.once('SCREENSHOTS:ready', () => {
-      this.logger('SCREENSHOTS:ready');
+    ipcMain.once("SCREENSHOTS:ready", () => {
+      this.logger("SCREENSHOTS:ready");
 
       resolve();
     });
@@ -70,39 +100,54 @@ export default class Screenshots extends Events {
 
   constructor(opts?: ScreenshotsOpts) {
     super();
-    this.logger = opts?.logger || debug('electron-screenshots');
+    this.logger = opts?.logger || debug("electron-screenshots");
     this.singleWindow = opts?.singleWindow || false;
+    this.getLanguagesFn = opts?.getLanguages;
+    this.translateFn = opts?.translate;
     this.listenIpc();
     this.$view.webContents.loadURL(
-      `file://${require.resolve('react-screenshots/dist/electron.html')}`,
+      `file://${require.resolve("@lihuo/react-screenshots/dist/electron.html")}`,
     );
     if (opts?.lang) {
       this.setLang(opts.lang);
     }
+
+    // 初始化 OCR 服务
+    if (opts?.enableOCR) {
+      this.ocrService = new OCRService();
+      this.setupOCRIpc();
+      // 预加载模型
+      this.ocrService.initialize().catch((err) => {
+        this.logger("OCR 初始化失败:", err);
+      });
+    }
+
+    // 设置翻译相关 IPC
+    this.setupTranslateIpc();
   }
 
   /**
    * 开始截图
    */
   public async startCapture(): Promise<void> {
-    this.logger('startCapture');
-    
+    this.logger("startCapture");
+
     const display = getDisplay();
 
-    this.logger('display', display);
+    this.logger("display", display);
 
     const [imageUrl] = await Promise.all([this.capture(display), this.isReady]);
 
     await this.createWindow(display);
 
-    this.$view.webContents.send('SCREENSHOTS:capture', display, imageUrl);
+    this.$view.webContents.send("SCREENSHOTS:capture", display, imageUrl);
   }
 
   /**
    * 结束截图
    */
   public async endCapture(): Promise<void> {
-    this.logger('endCapture');
+    this.logger("endCapture");
     await this.reset();
 
     if (!this.$win) {
@@ -127,16 +172,16 @@ export default class Screenshots extends Events {
    * 设置语言
    */
   public async setLang(lang: Partial<Lang>): Promise<void> {
-    this.logger('setLang', lang);
+    this.logger("setLang", lang);
 
     await this.isReady;
 
-    this.$view.webContents.send('SCREENSHOTS:setLang', lang);
+    this.$view.webContents.send("SCREENSHOTS:setLang", lang);
   }
 
   private async reset() {
     // 重置截图区域
-    this.$view.webContents.send('SCREENSHOTS:reset');
+    this.$view.webContents.send("SCREENSHOTS:reset");
 
     // 保证 UI 有足够的时间渲染
     await Promise.race([
@@ -144,7 +189,7 @@ export default class Screenshots extends Events {
         setTimeout(() => resolve(), 500);
       }),
       new Promise<void>((resolve) => {
-        ipcMain.once('SCREENSHOTS:reset', () => resolve());
+        ipcMain.once("SCREENSHOTS:reset", () => resolve());
       }),
     ]);
   }
@@ -159,15 +204,15 @@ export default class Screenshots extends Events {
     // 复用未销毁的窗口
     if (!this.$win || this.$win?.isDestroyed?.()) {
       const windowTypes: Record<string, string | undefined> = {
-        darwin: 'panel',
+        darwin: "panel",
         // linux 必须设置为 undefined，否则会在部分系统上不能触发focus 事件
         // https://github.com/nashaofu/screenshots/issues/203#issuecomment-1518923486
         linux: undefined,
-        win32: 'toolbar',
+        win32: "toolbar",
       };
 
       this.$win = new BrowserWindow({
-        title: 'screenshots',
+        title: "screenshots",
         x: display.x,
         y: display.y,
         width: display.width,
@@ -194,8 +239,8 @@ export default class Screenshots extends Events {
         // mac fullscreenable 设置为 true 会导致应用崩溃
         fullscreenable: false,
         kiosk: true,
-        backgroundColor: '#00000000',
-        titleBarStyle: 'hidden',
+        backgroundColor: "#00000000",
+        titleBarStyle: "hidden",
         hasShadow: false,
         paintWhenInitiallyHidden: false,
         // mac 特有的属性
@@ -204,14 +249,14 @@ export default class Screenshots extends Events {
         acceptFirstMouse: true,
       });
 
-      this.emit('windowCreated', this.$win);
-      this.$win.on('show', () => {
+      this.emit("windowCreated", this.$win);
+      this.$win.on("show", () => {
         this.$win?.focus();
         this.$win?.setKiosk(true);
       });
 
-      this.$win.on('closed', () => {
-        this.emit('windowClosed', this.$win);
+      this.$win.on("closed", () => {
+        this.emit("windowClosed", this.$win);
         this.$win = null;
       });
     }
@@ -219,11 +264,11 @@ export default class Screenshots extends Events {
     this.$win.setBrowserView(this.$view);
 
     // 适定平台
-    if (process.platform === 'darwin') {
+    if (process.platform === "darwin") {
       this.$win.setWindowButtonVisibility(false);
     }
 
-    if (process.platform !== 'win32') {
+    if (process.platform !== "win32") {
       this.$win.setVisibleOnAllWorkspaces(true, {
         visibleOnFullScreen: true,
         skipTransformProcessType: true,
@@ -243,23 +288,23 @@ export default class Screenshots extends Events {
   }
 
   private async capture(display: Display): Promise<string> {
-    this.logger('SCREENSHOTS:capture');
+    this.logger("SCREENSHOTS:capture");
 
     try {
-      const { Monitor } = await import('node-screenshots');
+      const { Monitor } = await import("node-screenshots");
       let point = {
         x: display.x + display.width / 2,
         y: display.y + display.height / 2,
       };
-      if (process.platform === 'win32') {
+      if (process.platform === "win32") {
         point = screen.screenToDipPoint(point);
       }
       const monitor = Monitor.fromPoint(point.x, point.y);
       this.logger(
-        'SCREENSHOTS:capture Monitor.fromPoint arguments %o',
+        "SCREENSHOTS:capture Monitor.fromPoint arguments %o",
         display,
       );
-      this.logger('SCREENSHOTS:capture Monitor.fromPoint return %o', {
+      this.logger("SCREENSHOTS:capture Monitor.fromPoint return %o", {
         id: monitor?.id,
         name: monitor?.name,
         x: monitor?.x,
@@ -278,11 +323,11 @@ export default class Screenshots extends Events {
 
       const image = await monitor.captureImage();
       const buffer = await image.toPng(true);
-      return `data:image/png;base64,${buffer.toString('base64')}`;
+      return `data:image/png;base64,${buffer.toString("base64")}`;
     } catch (err) {
-      this.logger('SCREENSHOTS:capture Monitor capture() error %o', err);
+      this.logger("SCREENSHOTS:capture Monitor capture() error %o", err);
       const sources = await desktopCapturer.getSources({
-        types: ['screen'],
+        types: ["screen"],
         thumbnailSize: {
           width: display.width * display.scaleFactor,
           height: display.height * display.scaleFactor,
@@ -324,16 +369,16 @@ export default class Screenshots extends Events {
      * OK事件
      */
     ipcMain.on(
-      'SCREENSHOTS:ok',
+      "SCREENSHOTS:ok",
       (_event, buffer: Buffer, data: ScreenshotsData) => {
         this.logger(
-          'SCREENSHOTS:ok buffer.length %d, data: %o',
+          "SCREENSHOTS:ok buffer.length %d, data: %o",
           buffer.length,
           data,
         );
 
         const event = new Event();
-        this.emit('ok', event, buffer, data);
+        this.emit("ok", event, buffer, data);
         if (event.defaultPrevented) {
           return;
         }
@@ -344,11 +389,11 @@ export default class Screenshots extends Events {
     /**
      * CANCEL事件
      */
-    ipcMain.on('SCREENSHOTS:cancel', () => {
-      this.logger('SCREENSHOTS:cancel');
+    ipcMain.on("SCREENSHOTS:cancel", () => {
+      this.logger("SCREENSHOTS:cancel");
 
       const event = new Event();
-      this.emit('cancel', event);
+      this.emit("cancel", event);
       if (event.defaultPrevented) {
         return;
       }
@@ -359,53 +404,196 @@ export default class Screenshots extends Events {
      * SAVE事件
      */
     ipcMain.on(
-      'SCREENSHOTS:save',
+      "SCREENSHOTS:save",
       async (_event, buffer: Buffer, data: ScreenshotsData) => {
         this.logger(
-          'SCREENSHOTS:save buffer.length %d, data: %o',
+          "SCREENSHOTS:save buffer.length %d, data: %o",
           buffer.length,
           data,
         );
 
         const event = new Event();
-        this.emit('save', event, buffer, data);
+        this.emit("save", event, buffer, data);
         if (event.defaultPrevented || !this.$win) {
           return;
         }
 
         const time = new Date();
         const year = time.getFullYear();
-        const month = padStart(time.getMonth() + 1, 2, '0');
-        const date = padStart(time.getDate(), 2, '0');
-        const hours = padStart(time.getHours(), 2, '0');
-        const minutes = padStart(time.getMinutes(), 2, '0');
-        const seconds = padStart(time.getSeconds(), 2, '0');
-        const milliseconds = padStart(time.getMilliseconds(), 3, '0');
+        const month = padStart(time.getMonth() + 1, 2, "0");
+        const date = padStart(time.getDate(), 2, "0");
+        const hours = padStart(time.getHours(), 2, "0");
+        const minutes = padStart(time.getMinutes(), 2, "0");
+        const seconds = padStart(time.getSeconds(), 2, "0");
+        const milliseconds = padStart(time.getMilliseconds(), 3, "0");
 
         this.$win.setAlwaysOnTop(false);
 
         const { canceled, filePath } = await dialog.showSaveDialog(this.$win, {
           defaultPath: `${year}${month}${date}${hours}${minutes}${seconds}${milliseconds}.png`,
           filters: [
-            { name: 'Image (png)', extensions: ['png'] },
-            { name: 'All Files', extensions: ['*'] },
+            { name: "Image (png)", extensions: ["png"] },
+            { name: "All Files", extensions: ["*"] },
           ],
         });
 
         if (!this.$win) {
-          this.emit('afterSave', new Event(), buffer, data, false); // isSaved = false
+          this.emit("afterSave", new Event(), buffer, data, false); // isSaved = false
           return;
         }
 
         this.$win.setAlwaysOnTop(true);
         if (canceled || !filePath) {
-          this.emit('afterSave', new Event(), buffer, data, false); // isSaved = false
+          this.emit("afterSave", new Event(), buffer, data, false); // isSaved = false
           return;
         }
 
         await fs.writeFile(filePath, buffer);
-        this.emit('afterSave', new Event(), buffer, data, true); // isSaved = true
+        this.emit("afterSave", new Event(), buffer, data, true); // isSaved = true
         this.endCapture();
+      },
+    );
+  }
+
+  /**
+   * 设置 OCR IPC 处理
+   */
+  private setupOCRIpc(): void {
+    ipcMain.handle("SCREENSHOTS:ocr", async (_event, imageDataUrl: string) => {
+      this.logger("SCREENSHOTS:ocr");
+
+      if (!this.ocrService) {
+        throw new Error("OCR 服务未启用");
+      }
+
+      try {
+        // 将 base64 转换为 Buffer
+        const base64Data = imageDataUrl.replace(/^data:image\/\w+;base64,/, "");
+        const buffer = Buffer.from(base64Data, "base64");
+
+        // 调用 OCR 识别（带位置信息）
+        const result = await this.ocrService.recognizeWithPosition(buffer);
+        return { success: true, ...result };
+      } catch (error) {
+        this.logger("OCR 识别失败:", error);
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : "未知错误",
+        };
+      }
+    });
+  }
+
+  /**
+   * 公共 API：OCR 识别
+   */
+  public async ocr(buffer: Buffer): Promise<string> {
+    if (!this.ocrService) {
+      throw new Error("OCR 服务未启用，请在构造函数中设置 enableOCR: true");
+    }
+
+    return await this.ocrService.recognize(buffer);
+  }
+
+  /**
+   * 释放资源
+   */
+  public async dispose(): Promise<void> {
+    if (this.ocrService) {
+      await this.ocrService.dispose();
+    }
+  }
+
+  /**
+   * 设置翻译相关 IPC 处理
+   */
+  private setupTranslateIpc(): void {
+    // 获取语言列表
+    ipcMain.handle(
+      "SCREENSHOTS:getLanguages",
+      async (): Promise<GetLanguagesResponse> => {
+        this.logger("SCREENSHOTS:getLanguages");
+
+        try {
+          // 优先使用构造函数传入的回调
+          if (this.getLanguagesFn) {
+            const languages = await this.getLanguagesFn();
+            return { success: true, languages };
+          }
+
+          // 否则发射事件让外部处理
+          const event = new Event();
+          const languages: LanguageItem[] = [];
+          this.emit("getLanguages", event, languages);
+
+          if (event.defaultPrevented) {
+            return { success: true, languages };
+          }
+
+          // 如果没有配置，返回空列表
+          return { success: true, languages: [] };
+        } catch (error) {
+          this.logger("获取语言列表失败:", error);
+          return {
+            success: false,
+            error: error instanceof Error ? error.message : "获取语言列表失败",
+          };
+        }
+      },
+    );
+
+    // 翻译文本
+    ipcMain.handle(
+      "SCREENSHOTS:translate",
+      async (_e, request: TranslateRequest): Promise<TranslateResponse> => {
+        this.logger("SCREENSHOTS:translate", request);
+
+        try {
+          // 优先使用构造函数传入的回调
+          if (this.translateFn) {
+            const text = await this.translateFn(request);
+            return { success: true, text };
+          }
+
+          // 否则发射事件让外部处理
+          const event = new Event();
+          let translatedText = "";
+
+          // 使用 Promise 包装事件回调
+          const result = await new Promise<string>((resolve, reject) => {
+            const timeout = setTimeout(() => {
+              reject(new Error("翻译超时"));
+            }, 30000); // 30秒超时
+
+            this.emit(
+              "translate",
+              event,
+              request,
+              (text: string) => {
+                clearTimeout(timeout);
+                resolve(text);
+              },
+              (error: Error) => {
+                clearTimeout(timeout);
+                reject(error);
+              },
+            );
+
+            // 如果事件被阻止且没有回调，直接返回空
+            if (event.defaultPrevented) {
+              clearTimeout(timeout);
+              resolve("");
+            }
+          });
+
+          return { success: true, text: result };
+        } catch (error) {
+          this.logger("翻译失败:", error);
+          return {
+            success: false,
+            error: error instanceof Error ? error.message : "翻译失败",
+          };
+        }
       },
     );
   }

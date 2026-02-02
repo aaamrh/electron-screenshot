@@ -1,4 +1,4 @@
-@import '../../var.less';
+@import "../../var.less";
 
 .screenshots-translate {
   display: inline-block;
@@ -12,6 +12,7 @@
     background-color: #fff;
     border-radius: 2px;
     overflow: hidden;
+    border-right: 1px solid #ddd;
 
     &:hover {
       background-color: #eee;
@@ -28,7 +29,6 @@
     text-align: center;
     cursor: pointer;
     position: relative;
-    border-right: 1px solid #ddd;
 
     &-loading {
       cursor: not-allowed;
@@ -47,8 +47,12 @@
   }
 
   @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+    0% {
+      transform: rotate(0deg);
+    }
+    100% {
+      transform: rotate(360deg);
+    }
   }
 
   &-arrow {
@@ -64,8 +68,19 @@
     }
 
     &-icon {
-      font-size: 10px;
-      font-family: Arial, sans-serif;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: #666;
+      transition: transform 0.2s ease;
+
+      svg {
+        display: block;
+      }
+
+      &.rotate-180 {
+        transform: rotate(180deg);
+      }
     }
   }
 

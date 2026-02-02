@@ -1,6 +1,6 @@
 {
-  "name": "react-screenshots",
-  "version": "0.6.0",
+  "name": "@lihuo/react-screenshots",
+  "version": "0.6.3",
   "description": "a screenshot cropper tool by react",
   "type": "module",
   "exports": {
@@ -42,7 +42,7 @@
   },
   "homepage": "https://github.com/nashaofu/screenshots/tree/master/packages/react-screenshots#readme",
   "publishConfig": {
-    "registry": "https://registry.npmjs.org/"
+    "registry": "https://npm.allyjp.site/"
   },
   "peerDependencies": {
     "react": ">=18.0.0",
@@ -61,7 +61,6 @@
     "typescript": "^5.9.3"
   },
   "dependencies": {
-    "install": "^0.13.0",
-    "tesseract.js": "^7.0.0"
+    "install": "^0.13.0"
   }
 }

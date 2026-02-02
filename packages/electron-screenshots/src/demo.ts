@@ -8,6 +8,7 @@ app.whenReady().then(() => {
       operation_rectangle_title: '矩形2323',
     },
     singleWindow: true,
+    enableOCR: true, // 启用 OCR 功能
   });
   screenshots.$view.webContents.openDevTools();
 
