@@ -1,0 +1,142 @@
+# 发包和更新流程
+
+## 📦 发包流程
+
+### 1. 修改代码后构建并发布
+
+#### react-screenshots 包
+```bash
+cd d:\work\screenshots\packages\react-screenshots
+npm version patch  # 或 minor/major
+pnpm build
+npm publish --registry=https://npm.allyjp.site/
+```
+
+#### electron-screenshots 包
+```bash
+cd d:\work\screenshots\packages\electron-screenshots
+npm version patch  # 或 minor/major
+pnpm build
+npm publish --registry=https://npm.allyjp.site/
+```
+
+### 2. 提交代码到 Git
+```bash
+cd d:\work\screenshots
+git add -A
+git commit -m "feat/fix: 描述更新内容"
+git push
+```
+
+## 🔄 更新翻译工具
+
+### 1. 更新依赖
+```bash
+cd d:\work\translationtools\packages\main
+yarn add @lihuo/electron-screenshots@最新版本号
+```
+
+### 2. 清除缓存（可选，如果遇到缓存问题）
+```bash
+cd d:\work\translationtools
+yarn cache clean
+yarn install
+```
+
+### 3. 启动测试
+```bash
+cd d:\work\translationtools
+yarn dev
+```
+
+## 🎯 完整发包命令（一键执行）
+
+### 发布新版本
+```bash
+# 进入 react-screenshots 目录
+cd d:\work\screenshots\packages\react-screenshots && npm version patch && pnpm build && npm publish --registry=https://npm.allyjp.site/
+
+# 进入 electron-screenshots 目录
+cd d:\work\screenshots\packages\electron-screenshots && npm version patch && pnpm build && npm publish --registry=https://npm.allyjp.site/
+
+# 提交代码
+cd d:\work\screenshots && git add -A && git commit -m "chore: 发布新版本" && git push
+```
+
+### 更新到翻译工具
+```bash
+# 获取最新版本号
+cd d:\work\translationtools\packages\main && yarn add @lihuo/electron-screenshots@latest
+
+# 清除缓存并重装（如有需要）
+cd d:\work\translationtools && yarn cache clean && yarn install
+```
+
+## ⚠️ 注意事项
+
+### 1. 样式文件打包
+确保 `rslib.config.ts` 中包含样式文件：
+```typescript
+source: {
+  entry: {
+    index: ['./src/**/*.tsx', './src/**/*.ts', './src/**/*.less'],
+  },
+}
+```
+
+### 2. 版本号说明
+- **patch**: 修复 bug (0.6.5 → 0.6.6)
+- **minor**: 新增功能 (0.6.6 → 0.7.0)
+- **major**: 破坏性变更 (0.7.0 → 1.0.0)
+
+### 3. 发布前检查
+- ✅ 确保代码已通过 lint 检查
+- ✅ 确保所有测试通过
+- ✅ 确认 package.json 中的依赖版本正确
+- ✅ 检查 dist 和 lib 目录内容完整
+
+### 4. 私有 npm 仓库
+- 仓库地址：https://npm.allyjp.site/
+- 管理员账号：admin
+- 密码：kakakak0011
+
+### 5. 常见问题
+
+#### 样式未生效
+1. 检查 lib 目录是否包含 .css 文件
+2. 检查 dist 目录的 HTML 是否引用了 CSS
+3. 清除 translationtools 的 yarn 缓存
+
+#### 缓存问题
+```bash
+# 清除 yarn 缓存
+cd d:\work\translationtools
+yarn cache clean
+
+# 删除 node_modules 重装
+rm -rf node_modules
+yarn install
+```
+
+#### 版本冲突
+```bash
+# 强制使用最新版本
+yarn add @lihuo/electron-screenshots@latest --force
+```
+
+## 📝 Commit 规范
+
+- `feat:` 新功能
+- `fix:` 修复 bug
+- `docs:` 文档更新
+- `style:` 代码格式调整
+- `refactor:` 代码重构
+- `perf:` 性能优化
+- `test:` 测试相关
+- `chore:` 构建/工具相关
+
+## 🔗 相关链接
+
+- GitHub 仓库：https://github.com/aaamrh/electron-screenshot
+- 私有 npm：https://npm.allyjp.site/
+- translationtools 项目：d:\work\translationtools
